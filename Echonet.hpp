@@ -77,10 +77,10 @@ public:
     }EDATA;
   }data;
   std::vector<byte> payload;
+  std::vector<byte> rawData;
   Echonet();
   Echonet(String data);
   size_t size();
-  uint32_t getPayloadInt();
 };
 
 #endif // __Echonet_HPP

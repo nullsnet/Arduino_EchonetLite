@@ -26,27 +26,22 @@ Echonet::Echonet(String response)
     data.EDATA.property = SmartMeterClass(hexdata[12]);
     data.EDATA.dataCounter = hexdata[13];
 
+    std::vector<byte> rawData(std::begin(hexdata), std::end(hexdata));
+
     if(responseSize > sizeof(EchonetData))
     {
       for(size_t payloadCounter = sizeof(EchonetData); payloadCounter < responseSize; payloadCounter++)
       {
         payload.insert(payload.begin(),strtol(response.substring(payloadCounter*2,(payloadCounter*2)+2).c_str(),NULL,16));
       }
+      rawData.insert(rawData.end(), payload.rbegin(), payload.rend());
     }
+
+    this->rawData = rawData;
   }
 }
 
 size_t Echonet::size()
 {
   return sizeof(EchonetData) + payload.size();
-}
-
-uint32_t Echonet::getPayloadInt()
-{
-  if(payload.size() == sizeof(uint32_t)){
-    return *(uint32_t *)payload.data();
-  }else
-  {
-    return 0;
-  }
 }
