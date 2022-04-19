@@ -2,6 +2,10 @@
 
 Echonet::Echonet(){}
 
+Echonet::Echonet(SmartMeterClass property){
+  this->data.EDATA.property = property;
+}
+
 Echonet::Echonet(String response)
 {
   const size_t responseSize = response.length()/2;
@@ -26,18 +30,13 @@ Echonet::Echonet(String response)
     data.EDATA.property = SmartMeterClass(hexdata[12]);
     data.EDATA.dataCounter = hexdata[13];
 
-    std::vector<byte> rawData(std::begin(hexdata), std::end(hexdata));
-
     if(responseSize > sizeof(EchonetData))
     {
       for(size_t payloadCounter = sizeof(EchonetData); payloadCounter < responseSize; payloadCounter++)
       {
         payload.insert(payload.begin(),strtol(response.substring(payloadCounter*2,(payloadCounter*2)+2).c_str(),NULL,16));
       }
-      rawData.insert(rawData.end(), payload.rbegin(), payload.rend());
     }
-
-    this->rawData = rawData;
   }
 }
 
@@ -45,3 +44,11 @@ size_t Echonet::size()
 {
   return sizeof(EchonetData) + payload.size();
 }
+
+std::vector<byte> Echonet::getRawData(){
+  byte data[sizeof(this->data)];
+  memcpy(data,reinterpret_cast<byte*>(&this->data),sizeof(this->data));
+  std::vector<byte> rawData(std::begin(data), std::end(data));
+  rawData.insert(rawData.end(), this->payload.rbegin(), this->payload.rend());
+  return rawData;
+};

@@ -77,10 +77,11 @@ public:
     }EDATA;
   }data;
   std::vector<byte> payload;
-  std::vector<byte> rawData;
   Echonet();
+  Echonet(SmartMeterClass property);
   Echonet(String data);
   size_t size();
+  std::vector<byte> getRawData();
 };
 
 #endif // __Echonet_HPP
