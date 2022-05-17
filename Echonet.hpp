@@ -1,6 +1,7 @@
 #ifndef __Echonet_HPP
 #define __Echonet_HPP
 
+#include <vector>
 #include <Arduino.h>
 
 class Echonet
