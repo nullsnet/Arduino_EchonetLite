@@ -2,11 +2,11 @@
 
 #pragma once
 
+// #include "esp32-hal-log.h"
+#include <algorithm>
 #include <string.h>
 #include <string>
 #include <vector>
-#include <algorithm>
-#include <iostream>
 
 class EchonetLite {
   public:
@@ -112,6 +112,7 @@ class EchonetLite {
     const size_t withoutPayloadSize   = sizeof(EchonetLiteHeader) + (sizeof(EchonetLiteObject) * 2) + sizeof(EchonetLiteService) + sizeof(uint8_t);
     const uint8_t ControllerClassCode = 0xFF;
 
+    /// @brief リクエストデータ生成
     EchonetLite() {
         data.EHEAD.head1               = NewEchonetLite;
         data.EHEAD.head2               = Type1;
@@ -127,6 +128,7 @@ class EchonetLite {
         // data.payload;
     }
 
+    /// @brief レスポンスのパース
     explicit EchonetLite(const std::string &response) {
         const size_t responseSize     = response.length() / 2;
         uint8_t hexdata[responseSize] = {0};
@@ -153,14 +155,19 @@ class EchonetLite {
                 .echonetLiteProperty = hexdata[counter++],
                 .propertyDataCounter = hexdata[counter++],
             };
+            // char logBuffer[payload.propertyDataCounter * 2 + 1];
+            // memset(logBuffer, '\0', sizeof(logBuffer));
             for (size_t j = 0; j < payload.propertyDataCounter; j++) {
                 payload.payload.insert(payload.payload.begin(), hexdata[counter + j]);
+                // snprintf(&logBuffer[j * 2], sizeof(logBuffer) - (j * 2), "%02X", hexdata[counter + j]);
             }
             counter += payload.payload.size();
             data.payload.push_back(payload);
+            // log_i("%02X : %s", payload.echonetLiteProperty, logBuffer);
         }
     }
 
+    /// @brief Get要求リクエストデータ生成
     explicit EchonetLite(const std::vector<uint8_t> &property)
         : EchonetLite() {
         this->data.EDATA.echonetLiteService       = Get;
@@ -175,6 +182,7 @@ class EchonetLite {
         }
     }
 
+    /// @brief EchonetLiteデータサイズ取得
     size_t size() {
         size_t size = withoutPayloadSize;
         for (const EchonetLitePayload &payload : data.payload) {
@@ -185,6 +193,7 @@ class EchonetLite {
         return size;
     }
 
+    /// @brief EchonetLiteバイナリデータ取得
     std::vector<uint8_t> getRawData() {
         uint8_t arrayData[this->size()];
         memcpy(arrayData, reinterpret_cast<uint8_t *>(&this->data), withoutPayloadSize);
@@ -201,16 +210,19 @@ class EchonetLite {
         return rawData;
     };
 
+    /// @brief レスポンスから特定プロパティのデータ取得
     std::vector<EchonetLite::EchonetLitePayload>::iterator getSpecifiedPropertyData(const uint8_t property, const size_t size) {
         return std::find_if(this->data.payload.begin(), this->data.payload.end(), [property, size](EchonetLite::EchonetLitePayload &payload) {
             return payload.echonetLiteProperty == property && payload.payload.size() == size;
         });
     }
 
+    /// @brief 取得データのバリデーション
     bool isValidValue(const int32_t value) {
         return value != 0x80000000 && value != 0x7FFFFFFF && value != 0x7FFFFFFE;
     }
 
+    /// @brief 取得データのバリデーション
     bool isValidValue(const int16_t value) {
         return value != 0x8000 && value != 0x7FFF && value != 0x7FFE;
     }

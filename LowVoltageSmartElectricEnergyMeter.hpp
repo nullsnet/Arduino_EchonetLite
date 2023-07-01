@@ -7,12 +7,12 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
     enum Property : uint8_t {
         BRouteIdentificationNumber            = 0xC0, ///< Bルート識別番号
         CumulativeEnergy1Minute               = 0xD0, ///< 1分積算電力量計測値 （正方向、逆方向計測値）
-        OwnerClassification                   = 0xD1,
-        Phase                                 = 0xD2,
-        Coefficient                           = 0xD3, ///< 係数
-        SyntheticTransformationMagnification  = 0xD4,
-        CertifiedNumber                       = 0xD5,
-        TestExpirationDate                    = 0xD6,
+        OwnerClassification                   = 0xD1, ///< 所有者区分
+        Phase                                 = 0xD2, ///< 相線式設定状態
+        Coefficient                           = 0xD3, ///< 係数(合成変成比)
+        SyntheticTransformationMagnification  = 0xD4, ///< 係数(合成変成比)の倍率
+        CertifiedNumber                       = 0xD5, ///< 計器認定番号
+        TestExpirationDate                    = 0xD6, ///< 検定満了年月
         CumulativeAmountEnergyEffectiveDigits = 0xD7, ///< 積算電力量有効桁数
         CumulativeEnergyPositive              = 0xE0, ///< 積算電力量計測値（正方向）
         CumulativeEnergyUnit                  = 0xE1, ///< 積算電力量単位（正・逆方向）
@@ -22,7 +22,7 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
         DateOfCollectCumulativeEnergyHistory  = 0xE5, ///< 積算履歴収集日
         InstantaneousPower                    = 0xE7, ///< 瞬時電力計測値
         InstantaneousCurrents                 = 0xE8, ///< 瞬時電流計測値
-        InstantaneousVoltage                  = 0xE9,
+        InstantaneousVoltage                  = 0xE9, ///< 瞬時電圧計測値
         FixedCumulativeEnergyPositive         = 0xEA, ///< 定時積算電力量（正方向）
         FixedCumulativeEnergyNegative         = 0xEB, ///< 定時積算電力量（逆方向）
         CumulativeEnergyHistory2              = 0xEC, ///< 積算電力量計測値履歴２（正方向、逆方向計測値）
@@ -31,19 +31,22 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
         DateOfCollectCumulativeEnergyHistory3 = 0xEF, ///< 積算履歴収集日３
     };
 
-    float cumulativeEnergyUnit            = 1;
-    uint32_t syntheticTransformationRatio = 1;
+    float cumulativeEnergyUnit            = 1; ///< 積算電力量単位デフォルト値
+    uint32_t syntheticTransformationRatio = 1; ///< 係数デフォルト値
 
+    /// @brief リクエストデータ生成
     LowVoltageSmartElectricEnergyMeterClass()
         : HousingFacilitiesDeviceClass() {
         data.EDATA.DEOJ.classCode = LowVoltageSmartElectricMeter;
     }
 
+    /// @brief Get要求リクエストデータ生成
     explicit LowVoltageSmartElectricEnergyMeterClass(const std::vector<uint8_t> &property)
         : HousingFacilitiesDeviceClass(property) {
         data.EDATA.DEOJ.classCode = LowVoltageSmartElectricMeter;
     }
 
+    /// @brief レスポンスのパース
     explicit LowVoltageSmartElectricEnergyMeterClass(const std::string &response)
         : HousingFacilitiesDeviceClass(response) {
         for (const EchonetLite::EchonetLitePayload &payload : this->data.payload) {
@@ -62,7 +65,8 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
         }
     }
 
-    double convertCumulativeEnergyUnit(const uint8_t raw) {
+    /// @brief 積算電力量単位変換
+    float convertCumulativeEnergyUnit(const uint8_t raw) {
         switch (raw) {
             case 0x01:
                 return 0.1;
@@ -86,6 +90,7 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
         }
     }
 
+    /// @brief 瞬時電力計測値取得
     bool getInstantaneousPower(int32_t *const instantaneousPower) {
         const auto result = getSpecifiedPropertyData(LowVoltageSmartElectricEnergyMeterClass::Property::InstantaneousPower, sizeof(int32_t));
 
@@ -100,6 +105,7 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
         return false;
     }
 
+    /// @brief 瞬時電流計測値取得
     bool getInstantaneousCurrent(float *const current_R, float *const current_T) {
         const auto result = getSpecifiedPropertyData(LowVoltageSmartElectricEnergyMeterClass::Property::InstantaneousCurrents, sizeof(int16_t) * 2);
 
@@ -109,14 +115,15 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
             memcpy(&temp_R, (*result).payload.data(), sizeof(int16_t));
             memcpy(&temp_T, (*result).payload.data() + sizeof(int16_t), sizeof(int16_t));
             if (isValidValue(temp_R) && isValidValue(temp_T)) {
-                *current_R = temp_R * 0.1;
-                *current_T = temp_T * 0.1;
+                *current_R = temp_R * 0.1; // 0.1A単位
+                *current_T = temp_T * 0.1; // 0.1A単位
                 return true;
             }
         }
         return false;
     }
 
+    /// @brief 積算電力量計測値（正方向）取得
     bool getCumulativeEnergyPositive(float *const cumulativeEnergyPositive) {
         const auto result = getSpecifiedPropertyData(LowVoltageSmartElectricEnergyMeterClass::Property::CumulativeEnergyPositive, sizeof(int32_t));
 
@@ -124,7 +131,7 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
             int32_t temp;
             memcpy(&temp, (*result).payload.data(), sizeof(int32_t));
             if (isValidValue(temp)) {
-                *cumulativeEnergyPositive = temp * this->syntheticTransformationRatio * this->cumulativeEnergyUnit;
+                *cumulativeEnergyPositive = temp * this->syntheticTransformationRatio * this->cumulativeEnergyUnit; // 単位・係数の乗算
                 return true;
             }
         }
