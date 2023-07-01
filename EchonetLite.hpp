@@ -5,12 +5,44 @@
 #include <string.h>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <iostream>
 
 class EchonetLite {
   public:
+    /// @brief 機器オブジェクトスーパークラス
+    enum SuperClassProperty : uint8_t {
+        OperationStatus                     = 0x80,
+        InstallationLocation                = 0x81,
+        StandardVersionInformation          = 0x82,
+        IdentificationNumber                = 0x83,
+        InstantaneousPowerConsumption       = 0x84,
+        CumulativeElectricEnergyConsumption = 0x85,
+        ManufacturersFaultCode              = 0x86,
+        CurrentLimitSetting                 = 0x87,
+        FaultStatus                         = 0x88,
+        FaultDescription                    = 0x89,
+        ManufacturerCode                    = 0x8A,
+        BusinessFacilityCode                = 0x8B,
+        ProductCode                         = 0x8C,
+        ProductionNumber                    = 0x8D,
+        ProductionDate                      = 0x8E,
+        PowerSavingOperationSetting         = 0x8F,
+        RemoteControlSetting                = 0x93,
+        CurrentTimeSetting                  = 0x97,
+        CurrentDateSetting                  = 0x98,
+        PowerLimitSetting                   = 0x99,
+        CumulativeOperatingTime             = 0x9A,
+        SetMPropertyMap                     = 0x9B,
+        GetMPropertyMap                     = 0x9C,
+        StatusChangeAnnouncementPropertyMap = 0x9D,
+        SetPropertyMap                      = 0x9E,
+        GetPropertyMap                      = 0x9F,
+    };
+
     enum ClassGroupCode : uint8_t {
-        HousingAndEquipmentClassGroup  = 0x02, // 住宅・設備関連機器クラスグループ
-        ManagementAndControlClassGroup = 0x05, // 管理・操作関連機器クラスグループ
+        HousingFacilitiesDeviceClassGroup   = 0x02, // 住宅・設備関連機器クラスグループ
+        ManagementOperationDeviceClassGroup = 0x05, // 管理・操作関連機器クラスグループ
     };
 
     /// @brief ３.２.１.１ ECHONET Lite ヘッダ１（EHD１）
@@ -27,11 +59,22 @@ class EchonetLite {
 
     /// @brief ３．２．５ ECHONET Liteサービス（ESV）
     enum EchonetLiteService : uint8_t {
-        SetI    = 0x60, // プロパティ値書き込み要求（応答不要）
-        SetC    = 0x61, // プロパティ値書き込み要求（応答要）
-        Get     = 0x62, // プロパティ値読み出し要求
-        INF_REQ = 0x63, // プロパティ値通知要求
-        SetGet  = 0x6E, // プロパティ値書き込み・読み出し要求
+        SetI_SNA   = 0x50,
+        SetC_SNA   = 0x51,
+        Get_SNA    = 0x52,
+        INF_SNA    = 0x53,
+        SetGet_SNA = 0x5E,
+        SetI       = 0x60, // プロパティ値書き込み要求（応答不要）
+        SetC       = 0x61, // プロパティ値書き込み要求（応答要）
+        Get        = 0x62, // プロパティ値読み出し要求
+        INF_REQ    = 0x63, // プロパティ値通知要求
+        SetGet     = 0x6E, // プロパティ値書き込み・読み出し要求
+        Set_Res    = 0x71,
+        Get_Res    = 0x72,
+        INF        = 0x73,
+        INFC       = 0x74,
+        INFC_Res   = 0x7A,
+        SetGet_Res = 0x7E,
     };
 
     /// @brief ３．２．１ ECHONET Liteヘッダ（EHD）
@@ -73,7 +116,7 @@ class EchonetLite {
         data.EHEAD.head1               = NewEchonetLite;
         data.EHEAD.head2               = Type1;
         data.EHEAD.TransactionId       = 0x0001;
-        data.EDATA.SEOJ.classGroupCode = ManagementAndControlClassGroup;
+        data.EDATA.SEOJ.classGroupCode = ManagementOperationDeviceClassGroup;
         data.EDATA.SEOJ.classCode      = ControllerClassCode;
         data.EDATA.SEOJ.instanceCode   = 0x01;
         // data.EDATA.DEOJ.classGroupCode;
@@ -84,7 +127,7 @@ class EchonetLite {
         // data.payload;
     }
 
-    EchonetLite(const std::string response) {
+    explicit EchonetLite(const std::string &response) {
         const size_t responseSize     = response.length() / 2;
         uint8_t hexdata[responseSize] = {0};
 
@@ -111,14 +154,14 @@ class EchonetLite {
                 .propertyDataCounter = hexdata[counter++],
             };
             for (size_t j = 0; j < payload.propertyDataCounter; j++) {
-                payload.payload.push_back(hexdata[counter + j]);
+                payload.payload.insert(payload.payload.begin(), hexdata[counter + j]);
             }
             counter += payload.payload.size();
             data.payload.push_back(payload);
         }
     }
 
-    EchonetLite(const std::vector<uint8_t> property)
+    explicit EchonetLite(const std::vector<uint8_t> &property)
         : EchonetLite() {
         this->data.EDATA.echonetLiteService       = Get;
         this->data.EDATA.operationPropertyCounter = property.size();
@@ -157,4 +200,18 @@ class EchonetLite {
         std::vector<uint8_t> rawData(arrayData, arrayData + this->size());
         return rawData;
     };
+
+    std::vector<EchonetLite::EchonetLitePayload>::iterator getSpecifiedPropertyData(const uint8_t property, const size_t size) {
+        return std::find_if(this->data.payload.begin(), this->data.payload.end(), [property, size](EchonetLite::EchonetLitePayload &payload) {
+            return payload.echonetLiteProperty == property && payload.payload.size() == size;
+        });
+    }
+
+    bool isValidValue(const int32_t value) {
+        return value != 0x80000000 && value != 0x7FFFFFFF && value != 0x7FFFFFFE;
+    }
+
+    bool isValidValue(const int16_t value) {
+        return value != 0x8000 && value != 0x7FFF && value != 0x7FFE;
+    }
 };
