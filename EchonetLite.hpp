@@ -11,7 +11,7 @@
 class EchonetLite {
   public:
     /// @brief 機器オブジェクトスーパークラス
-    enum SuperClassProperty : uint8_t {
+    enum class Property : uint8_t {
         OperationStatus                     = 0x80,
         InstallationLocation                = 0x81,
         StandardVersionInformation          = 0x82,
@@ -40,25 +40,29 @@ class EchonetLite {
         GetPropertyMap                      = 0x9F,
     };
 
-    enum ClassGroupCode : uint8_t {
+    enum class ClassGroupCode : uint8_t {
         HousingFacilitiesDeviceClassGroup   = 0x02, // 住宅・設備関連機器クラスグループ
         ManagementOperationDeviceClassGroup = 0x05, // 管理・操作関連機器クラスグループ
     };
 
+    enum class ClassCode : uint8_t {
+        Controller = 0xFF, // 住宅・設備関連機器クラスグループ
+    };
+
     /// @brief ３.２.１.１ ECHONET Lite ヘッダ１（EHD１）
-    enum EchonetLiteHeader1 : uint8_t {
+    enum class EchonetLiteHeader1 : uint8_t {
         LegacyEchonet  = 0b10000000, // 従来のEchone規格(使用不可)
         NewEchonetLite = 0b00010000, // EchonetLite規格
     };
 
     /// @brief ３.２.１.２ ECHONET Lite ヘッダ２（EHD２）
-    enum EchonetLiteHeader2 : uint8_t {
+    enum class EchonetLiteHeader2 : uint8_t {
         Type1 = 0b10000001, // 電文形式1（規定電文形式）
         Type2 = 0b10000010, // 電文形式2（任意電文形式）
     };
 
     /// @brief ３．２．５ ECHONET Liteサービス（ESV）
-    enum EchonetLiteService : uint8_t {
+    enum class EchonetLiteService : uint8_t {
         SetI_SNA   = 0x50,
         SetC_SNA   = 0x51,
         Get_SNA    = 0x52,
@@ -109,16 +113,15 @@ class EchonetLite {
         std::vector<EchonetLitePayload> payload;
     } data;
 
-    const size_t withoutPayloadSize   = sizeof(EchonetLiteHeader) + (sizeof(EchonetLiteObject) * 2) + sizeof(EchonetLiteService) + sizeof(uint8_t);
-    const uint8_t ControllerClassCode = 0xFF;
+    const size_t withoutPayloadSize = sizeof(EchonetLiteHeader) + (sizeof(EchonetLiteObject) * 2) + sizeof(EchonetLiteService) + sizeof(uint8_t);
 
     /// @brief リクエストデータ生成
     EchonetLite() {
-        data.EHEAD.head1               = NewEchonetLite;
-        data.EHEAD.head2               = Type1;
+        data.EHEAD.head1               = EchonetLiteHeader1::NewEchonetLite;
+        data.EHEAD.head2               = EchonetLiteHeader2::Type1;
         data.EHEAD.TransactionId       = 0x0001;
-        data.EDATA.SEOJ.classGroupCode = ManagementOperationDeviceClassGroup;
-        data.EDATA.SEOJ.classCode      = ControllerClassCode;
+        data.EDATA.SEOJ.classGroupCode = ClassGroupCode::ManagementOperationDeviceClassGroup;
+        data.EDATA.SEOJ.classCode      = static_cast<std::underlying_type<Property>::type>(ClassCode::Controller);
         data.EDATA.SEOJ.instanceCode   = 0x01;
         // data.EDATA.DEOJ.classGroupCode;
         // data.EDATA.DEOJ.classCode;
@@ -140,10 +143,10 @@ class EchonetLite {
         data.EHEAD.head1                    = EchonetLiteHeader1(hexdata[0]);
         data.EHEAD.head2                    = EchonetLiteHeader2(hexdata[1]);
         data.EHEAD.TransactionId            = (hexdata[3] << 8) + hexdata[2];
-        data.EDATA.SEOJ.classGroupCode      = (ClassGroupCode)hexdata[4];
+        data.EDATA.SEOJ.classGroupCode      = ClassGroupCode(hexdata[4]);
         data.EDATA.SEOJ.classCode           = hexdata[5];
         data.EDATA.SEOJ.instanceCode        = hexdata[6];
-        data.EDATA.DEOJ.classGroupCode      = (ClassGroupCode)hexdata[7];
+        data.EDATA.DEOJ.classGroupCode      = ClassGroupCode(hexdata[7]);
         data.EDATA.DEOJ.classCode           = hexdata[8];
         data.EDATA.DEOJ.instanceCode        = hexdata[9];
         data.EDATA.echonetLiteService       = EchonetLiteService(hexdata[10]);
@@ -168,13 +171,14 @@ class EchonetLite {
     }
 
     /// @brief Get要求リクエストデータ生成
-    explicit EchonetLite(const std::vector<uint8_t> &property)
+    template <class PropertyType>
+    explicit EchonetLite(const std::vector<PropertyType> &property)
         : EchonetLite() {
-        this->data.EDATA.echonetLiteService       = Get;
+        this->data.EDATA.echonetLiteService       = EchonetLiteService::Get;
         this->data.EDATA.operationPropertyCounter = property.size();
-        for (const uint8_t &prop : property) {
+        for (const PropertyType &prop : property) {
             EchonetLitePayload payload = {
-                .echonetLiteProperty = prop,
+                .echonetLiteProperty = static_cast<typename std::underlying_type<PropertyType>::type>(prop),
                 .propertyDataCounter = 0x00,
                 .payload             = std::vector<uint8_t>(),
             };
@@ -210,10 +214,11 @@ class EchonetLite {
         return rawData;
     };
 
-    /// @brief レスポンスから特定プロパティのデータ取得
-    std::vector<EchonetLite::EchonetLitePayload>::iterator getSpecifiedPropertyData(const uint8_t property, const size_t size) {
+    /// @brief レスポンスから特定プロパティのデータ検索
+    template <class PropertyType>
+    std::vector<EchonetLitePayload>::iterator findSpecifiedPropertyData(const PropertyType property, const size_t size) {
         return std::find_if(this->data.payload.begin(), this->data.payload.end(), [property, size](EchonetLite::EchonetLitePayload &payload) {
-            return payload.echonetLiteProperty == property && payload.payload.size() == size;
+            return payload.echonetLiteProperty == static_cast<typename std::underlying_type<PropertyType>::type>(property) && payload.payload.size() == size;
         });
     }
 

@@ -2,21 +2,22 @@
 
 class HousingFacilitiesDeviceClass : public EchonetLite {
   public:
-    enum ClassCode : uint8_t {
+    enum class ClassCode : uint8_t {
         LowVoltageSmartElectricMeter = 0x88, // 低圧スマート電力量メータ
     };
 
     HousingFacilitiesDeviceClass()
         : EchonetLite() {
-        data.EDATA.DEOJ.classGroupCode = HousingFacilitiesDeviceClassGroup;
+        data.EDATA.DEOJ.classGroupCode = EchonetLite::ClassGroupCode::HousingFacilitiesDeviceClassGroup;
     }
 
     explicit HousingFacilitiesDeviceClass(const std::string &response)
         : EchonetLite(response) {
     }
 
-    explicit HousingFacilitiesDeviceClass(const std::vector<uint8_t> &property)
+    template <class PropertyType>
+    explicit HousingFacilitiesDeviceClass(const std::vector<PropertyType> &property)
         : EchonetLite(property) {
-        data.EDATA.DEOJ.classGroupCode = HousingFacilitiesDeviceClassGroup;
+        data.EDATA.DEOJ.classGroupCode = EchonetLite::ClassGroupCode::HousingFacilitiesDeviceClassGroup;
     }
 };

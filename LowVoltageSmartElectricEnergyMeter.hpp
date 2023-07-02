@@ -4,7 +4,7 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
   public:
     /// @brief 低圧スマート電力量メータクラス
     /// @version APPENDIX ECHONET 機器オブジェクト詳細規定 Release R
-    enum Property : uint8_t {
+    enum class Property : uint8_t {
         BRouteIdentificationNumber            = 0xC0, ///< Bルート識別番号
         CumulativeEnergy1Minute               = 0xD0, ///< 1分積算電力量計測値 （正方向、逆方向計測値）
         OwnerClassification                   = 0xD1, ///< 所有者区分
@@ -37,20 +37,22 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
     /// @brief リクエストデータ生成
     LowVoltageSmartElectricEnergyMeterClass()
         : HousingFacilitiesDeviceClass() {
-        data.EDATA.DEOJ.classCode = LowVoltageSmartElectricMeter;
+        data.EDATA.DEOJ.classCode = static_cast<uint8_t>(ClassCode::LowVoltageSmartElectricMeter);
     }
 
     /// @brief Get要求リクエストデータ生成
-    explicit LowVoltageSmartElectricEnergyMeterClass(const std::vector<uint8_t> &property)
+    template <class PropertyType>
+    explicit LowVoltageSmartElectricEnergyMeterClass(const std::vector<PropertyType> &property)
         : HousingFacilitiesDeviceClass(property) {
-        data.EDATA.DEOJ.classCode = LowVoltageSmartElectricMeter;
+        data.EDATA.DEOJ.classCode = static_cast<uint8_t>(ClassCode::LowVoltageSmartElectricMeter);
     }
 
     /// @brief レスポンスのパース
     explicit LowVoltageSmartElectricEnergyMeterClass(const std::string &response)
         : HousingFacilitiesDeviceClass(response) {
         for (const EchonetLite::EchonetLitePayload &payload : this->data.payload) {
-            switch (payload.echonetLiteProperty) {
+            // 係数と単位はあらかじめパースしておく
+            switch (static_cast<Property>(payload.echonetLiteProperty)) {
                 case LowVoltageSmartElectricEnergyMeterClass::Property::CumulativeEnergyUnit:
                     if (payload.payload.size() == sizeof(int8_t))
                         this->cumulativeEnergyUnit = convertCumulativeEnergyUnit(payload.payload[0]);
