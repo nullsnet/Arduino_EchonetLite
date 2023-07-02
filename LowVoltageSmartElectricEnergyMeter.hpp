@@ -92,49 +92,28 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
 
     /// @brief 瞬時電力計測値取得
     bool getInstantaneousPower(int32_t *const instantaneousPower) {
-        const auto result = getSpecifiedPropertyData(LowVoltageSmartElectricEnergyMeterClass::Property::InstantaneousPower, sizeof(int32_t));
-
-        if (result != this->data.payload.end()) {
-            int32_t temp;
-            memcpy(&temp, (*result).payload.data(), sizeof(int32_t));
-            if (isValidValue(temp)) {
-                *instantaneousPower = temp;
-                return true;
-            }
-        }
-        return false;
+        return getSpecifiedPropertyData(Property::InstantaneousPower, instantaneousPower);
     }
 
     /// @brief 瞬時電流計測値取得
     bool getInstantaneousCurrent(float *const current_R, float *const current_T) {
-        const auto result = getSpecifiedPropertyData(LowVoltageSmartElectricEnergyMeterClass::Property::InstantaneousCurrents, sizeof(int16_t) * 2);
-
-        if (result != this->data.payload.end()) {
-            int16_t temp_R;
-            int16_t temp_T;
-            memcpy(&temp_R, (*result).payload.data(), sizeof(int16_t));
-            memcpy(&temp_T, (*result).payload.data() + sizeof(int16_t), sizeof(int16_t));
-            if (isValidValue(temp_R) && isValidValue(temp_T)) {
-                *current_R = temp_R * 0.1; // 0.1A単位
-                *current_T = temp_T * 0.1; // 0.1A単位
-                return true;
-            }
+        int16_t current_R_Int = 0;
+        int16_t current_T_Int = 0;
+        const auto hasData    = getSpecifiedPropertyData(Property::InstantaneousCurrents, &current_R_Int, &current_T_Int);
+        if (hasData) {
+            *current_R = current_R_Int * 0.1;
+            *current_T = current_T_Int * 0.1;
         }
-        return false;
+        return hasData;
     }
 
     /// @brief 積算電力量計測値（正方向）取得
     bool getCumulativeEnergyPositive(float *const cumulativeEnergyPositive) {
-        const auto result = getSpecifiedPropertyData(LowVoltageSmartElectricEnergyMeterClass::Property::CumulativeEnergyPositive, sizeof(int32_t));
-
-        if (result != this->data.payload.end()) {
-            int32_t temp;
-            memcpy(&temp, (*result).payload.data(), sizeof(int32_t));
-            if (isValidValue(temp)) {
-                *cumulativeEnergyPositive = temp * this->syntheticTransformationRatio * this->cumulativeEnergyUnit; // 単位・係数の乗算
-                return true;
-            }
+        int32_t cumulativeEnergyPositiveInt = 0;
+        bool hasData                        = getSpecifiedPropertyData(Property::CumulativeEnergyPositive, &cumulativeEnergyPositiveInt);
+        if (hasData) {
+            *cumulativeEnergyPositive = cumulativeEnergyPositiveInt * this->syntheticTransformationRatio * this->cumulativeEnergyUnit;
         }
-        return false;
+        return hasData;
     }
 };

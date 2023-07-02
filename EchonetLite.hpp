@@ -226,4 +226,38 @@ class EchonetLite {
     bool isValidValue(const int16_t value) {
         return value != 0x8000 && value != 0x7FFF && value != 0x7FFE;
     }
+
+    /// @brief レスポンスから特定プロパティのデータ取得
+    template <class PropertyType, class PropertyDataType>
+    bool getSpecifiedPropertyData(PropertyType prop, PropertyDataType *const data) {
+        const auto result = findSpecifiedPropertyData(prop, sizeof(PropertyDataType));
+        if (result != this->data.payload.end()) {
+            PropertyDataType temp;
+            memcpy(&temp, (*result).payload.data(), sizeof(PropertyDataType));
+            if (isValidValue(temp)) {
+                *data = temp;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// @brief レスポンスから特定プロパティのデータ取得
+    /// @note データ数をテンプレートで可変長にしたいがとりあえずベタ実装
+    template <class PropertyType, class PropertyDataType1, class PropertyDataType2>
+    bool getSpecifiedPropertyData(PropertyType prop, PropertyDataType1 *const data1, PropertyDataType2 *const data2) {
+        const auto result = findSpecifiedPropertyData(prop, sizeof(PropertyDataType1) + sizeof(PropertyDataType2));
+        if (result != this->data.payload.end()) {
+            PropertyDataType1 data1Temp;
+            PropertyDataType2 data2Temp;
+            memcpy(&data1Temp, (*result).payload.data(), sizeof(PropertyDataType1));
+            memcpy(&data2Temp, (*result).payload.data() + sizeof(PropertyDataType2), sizeof(PropertyDataType2));
+            if (isValidValue(data1Temp) && isValidValue(data2Temp)) {
+                *data1 = data1Temp;
+                *data2 = data2Temp;
+                return true;
+            }
+        }
+        return false;
+    }
 };
