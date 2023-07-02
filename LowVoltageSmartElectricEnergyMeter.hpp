@@ -33,6 +33,7 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
 
     float cumulativeEnergyUnit            = 1; ///< 積算電力量単位デフォルト値
     uint32_t syntheticTransformationRatio = 1; ///< 係数デフォルト値
+    uint32_t certifiedNumber              = 0;
 
     /// @brief リクエストデータ生成
     LowVoltageSmartElectricEnergyMeterClass()
@@ -60,6 +61,10 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
                 case LowVoltageSmartElectricEnergyMeterClass::Property::Coefficient:
                     if (payload.payload.size() == sizeof(int32_t))
                         memcpy(&this->syntheticTransformationRatio, payload.payload.data(), sizeof(int32_t));
+                    break;
+                case LowVoltageSmartElectricEnergyMeterClass::Property::CertifiedNumber:
+                    if (payload.payload.size() == sizeof(int32_t))
+                        memcpy(&this->certifiedNumber, payload.payload.data(), sizeof(int32_t));
                     break;
                 default:
                     break;
