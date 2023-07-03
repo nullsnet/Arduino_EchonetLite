@@ -8,7 +8,7 @@ class HousingFacilitiesDeviceClass : public EchonetLite {
 
     HousingFacilitiesDeviceClass()
         : EchonetLite() {
-        data.EDATA.DEOJ.classGroupCode = EchonetLite::ClassGroupCode::HousingFacilitiesDeviceClassGroup;
+        this->data.EDATA.DEOJ.classGroupCode = EchonetLite::ClassGroupCode::HousingFacilitiesDeviceClassGroup;
     }
 
     explicit HousingFacilitiesDeviceClass(const std::string &response)
@@ -18,6 +18,6 @@ class HousingFacilitiesDeviceClass : public EchonetLite {
     template <class PropertyType>
     explicit HousingFacilitiesDeviceClass(const std::vector<PropertyType> &property)
         : EchonetLite(property) {
-        data.EDATA.DEOJ.classGroupCode = EchonetLite::ClassGroupCode::HousingFacilitiesDeviceClassGroup;
+        this->data.EDATA.DEOJ.classGroupCode = EchonetLite::ClassGroupCode::HousingFacilitiesDeviceClassGroup;
     }
 };

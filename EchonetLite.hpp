@@ -113,10 +113,14 @@ class EchonetLite {
         std::vector<EchonetLitePayload> payload;
     } data;
 
-    const size_t withoutPayloadSize = sizeof(EchonetLiteHeader) + (sizeof(EchonetLiteObject) * 2) + sizeof(EchonetLiteService) + sizeof(uint8_t);
+    explicit EchonetLite() {
+        format();
+    };
 
-    /// @brief リクエストデータ生成
-    EchonetLite() {
+    void format() {
+        memset(&data.EHEAD, 0, sizeof(data.EHEAD));
+        memset(&data.EDATA, 0, sizeof(data.EDATA));
+        data.payload.clear();
         data.EHEAD.head1               = EchonetLiteHeader1::NewEchonetLite;
         data.EHEAD.head2               = EchonetLiteHeader2::Type1;
         data.EHEAD.TransactionId       = 0x0001;
@@ -132,7 +136,8 @@ class EchonetLite {
     }
 
     /// @brief レスポンスのパース
-    explicit EchonetLite(const std::string &response) {
+    void load(const std::string &response) {
+        format();
         const size_t responseSize     = response.length() / 2;
         uint8_t hexdata[responseSize] = {0};
 
@@ -170,10 +175,15 @@ class EchonetLite {
         }
     }
 
+    /// @brief レスポンスのパース
+    explicit EchonetLite(const std::string &response) {
+        this->load(response);
+    }
+
     /// @brief Get要求リクエストデータ生成
     template <class PropertyType>
-    explicit EchonetLite(const std::vector<PropertyType> &property)
-        : EchonetLite() {
+    void generateGetRequest(const std::vector<PropertyType> &property) {
+        format();
         this->data.EDATA.echonetLiteService       = EchonetLiteService::Get;
         this->data.EDATA.operationPropertyCounter = property.size();
         for (const PropertyType &prop : property) {
@@ -186,9 +196,15 @@ class EchonetLite {
         }
     }
 
+    /// @brief Get要求リクエストデータ生成
+    template <class PropertyType>
+    explicit EchonetLite(const std::vector<PropertyType> &property) {
+        generateGetRequest(property);
+    }
+
     /// @brief EchonetLiteデータサイズ取得
     size_t size() {
-        size_t size = withoutPayloadSize;
+        size_t size = sizeof(data.EHEAD) + sizeof(data.EDATA);
         for (const EchonetLitePayload &payload : data.payload) {
             size += sizeof(payload.echonetLiteProperty);
             size += sizeof(payload.propertyDataCounter);
@@ -200,9 +216,9 @@ class EchonetLite {
     /// @brief EchonetLiteバイナリデータ取得
     std::vector<uint8_t> getRawData() {
         uint8_t arrayData[this->size()];
-        memcpy(arrayData, reinterpret_cast<uint8_t *>(&this->data), withoutPayloadSize);
+        memcpy(arrayData, reinterpret_cast<uint8_t *>(&this->data), sizeof(data.EHEAD) + sizeof(data.EDATA));
 
-        int ptr = withoutPayloadSize;
+        int ptr = sizeof(data.EHEAD) + sizeof(data.EDATA);
         for (const EchonetLitePayload &payload : this->data.payload) {
             arrayData[ptr++] = payload.echonetLiteProperty;
             arrayData[ptr++] = payload.propertyDataCounter;
