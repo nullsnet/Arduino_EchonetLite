@@ -237,6 +237,12 @@ class EchonetLite {
     }
 
     /// @brief 取得データのバリデーション
+    template <class PropertyType>
+    bool isValidValue(const PropertyType value) {
+        return true;
+    }
+
+    /// @brief 取得データのバリデーション
     bool isValidValue(const int32_t value) {
         return value != 0x80000000 && value != 0x7FFFFFFF && value != 0x7FFFFFFE;
     }

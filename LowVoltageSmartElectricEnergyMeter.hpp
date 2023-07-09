@@ -31,9 +31,32 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
         DateOfCollectCumulativeEnergyHistory3 = 0xEF, ///< 積算履歴収集日３
     };
 
-    float cumulativeEnergyUnit            = 1; ///< 積算電力量単位デフォルト値
-    uint32_t syntheticTransformationRatio = 1; ///< 係数デフォルト値
-    uint32_t certifiedNumber              = 0;
+    double cumulativeEnergyUnit           = 1.0; ///< 積算電力量単位デフォルト値
+    uint32_t syntheticTransformationRatio = 1;   ///< 係数デフォルト値
+
+    /// @brief 単位初期化
+    bool initCumulativeEnergyUnit(void) {
+        int8_t unit;
+        if (getSpecifiedPropertyData(Property::CumulativeEnergyUnit, &unit) && convertCumulativeEnergyUnit(unit, &this->cumulativeEnergyUnit)) {
+            return true;
+        }
+        return false;
+    }
+
+    /// @brief 係数初期化
+    bool initSyntheticTransformationRatio(void) {
+        uint32_t ratio;
+        if (getSpecifiedPropertyData(Property::Coefficient, &ratio) && ratio <= 999999) {
+            this->syntheticTransformationRatio = ratio;
+            return true;
+        }
+        return false;
+    }
+
+    /// @brief 定数初期化
+    bool initConstantData() {
+        return initCumulativeEnergyUnit() && initSyntheticTransformationRatio();
+    }
 
     /// @brief Get要求リクエストデータ生成
     template <class PropertyType>
@@ -49,16 +72,10 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
             // 係数と単位はあらかじめパースしておく
             switch (static_cast<Property>(payload.echonetLiteProperty)) {
                 case LowVoltageSmartElectricEnergyMeterClass::Property::CumulativeEnergyUnit:
-                    if (payload.payload.size() == sizeof(int8_t))
-                        this->cumulativeEnergyUnit = convertCumulativeEnergyUnit(payload.payload[0]);
+                    initCumulativeEnergyUnit();
                     break;
                 case LowVoltageSmartElectricEnergyMeterClass::Property::Coefficient:
-                    if (payload.payload.size() == sizeof(int32_t))
-                        memcpy(&this->syntheticTransformationRatio, payload.payload.data(), sizeof(int32_t));
-                    break;
-                case LowVoltageSmartElectricEnergyMeterClass::Property::CertifiedNumber:
-                    if (payload.payload.size() == sizeof(int32_t))
-                        memcpy(&this->certifiedNumber, payload.payload.data(), sizeof(int32_t));
+                    initSyntheticTransformationRatio();
                     break;
                 default:
                     break;
@@ -68,27 +85,37 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
     }
 
     /// @brief 積算電力量単位変換
-    float convertCumulativeEnergyUnit(const uint8_t raw) {
-        switch (raw) {
-            case 0x01:
-                return 0.1;
-            case 0x02:
-                return 0.01;
-            case 0x03:
-                return 0.001;
-            case 0x04:
-                return 0.0001;
-            case 0x0A:
-                return 10;
-            case 0x0B:
-                return 100;
-            case 0x0C:
-                return 1000;
-            case 0x0D:
-                return 10000;
+    bool convertCumulativeEnergyUnit(const uint8_t in, double *const out) {
+        switch (in) {
             case 0x00:
+                *out = 1.0;
+                return true;
+            case 0x01:
+                *out = 0.1;
+                return true;
+            case 0x02:
+                *out = 0.01;
+                return true;
+            case 0x03:
+                *out = 0.001;
+                return true;
+            case 0x04:
+                *out = 0.0001;
+                return true;
+            case 0x0A:
+                *out = 10.0;
+                return true;
+            case 0x0B:
+                *out = 100.0;
+                return true;
+            case 0x0C:
+                *out = 1000.0;
+                return true;
+            case 0x0D:
+                *out = 10000.0;
+                return true;
             default:
-                return 1;
+                return false;
         }
     }
 
