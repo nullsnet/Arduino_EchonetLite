@@ -113,6 +113,8 @@ class EchonetLite {
         std::vector<EchonetLitePayload> payload;
     } data;
 
+    uint16_t nextTransactionId = 0;
+
     explicit EchonetLite() {
         format();
     };
@@ -123,7 +125,7 @@ class EchonetLite {
         data.payload.clear();
         data.EHEAD.head1               = EchonetLiteHeader1::NewEchonetLite;
         data.EHEAD.head2               = EchonetLiteHeader2::Type1;
-        data.EHEAD.TransactionId       = 0x0001;
+        data.EHEAD.TransactionId       = nextTransactionId;
         data.EDATA.SEOJ.classGroupCode = ClassGroupCode::ManagementOperationDeviceClassGroup;
         data.EDATA.SEOJ.classCode      = static_cast<std::underlying_type<Property>::type>(ClassCode::Controller);
         data.EDATA.SEOJ.instanceCode   = 0x01;
@@ -136,7 +138,7 @@ class EchonetLite {
     }
 
     /// @brief レスポンスのパース
-    void load(const std::string &response) {
+    bool load(const std::string &response) {
         format();
         const size_t responseSize     = response.length() / 2;
         uint8_t hexdata[responseSize] = {0};
@@ -173,11 +175,8 @@ class EchonetLite {
             data.payload.push_back(payload);
             // log_i("%02X : %s", payload.echonetLiteProperty, logBuffer);
         }
-    }
 
-    /// @brief レスポンスのパース
-    explicit EchonetLite(const std::string &response) {
-        this->load(response);
+        return isTransactionIdExpected();
     }
 
     /// @brief Get要求リクエストデータ生成
@@ -186,6 +185,7 @@ class EchonetLite {
         format();
         this->data.EDATA.echonetLiteService       = EchonetLiteService::Get;
         this->data.EDATA.operationPropertyCounter = property.size();
+        this->data.EHEAD.TransactionId            = ++nextTransactionId;
         for (const PropertyType &prop : property) {
             EchonetLitePayload payload = {
                 .echonetLiteProperty = static_cast<typename std::underlying_type<PropertyType>::type>(prop),
@@ -196,10 +196,8 @@ class EchonetLite {
         }
     }
 
-    /// @brief Get要求リクエストデータ生成
-    template <class PropertyType>
-    explicit EchonetLite(const std::vector<PropertyType> &property) {
-        generateGetRequest(property);
+    bool isTransactionIdExpected() {
+        return this->data.EHEAD.TransactionId == this->nextTransactionId;
     }
 
     /// @brief EchonetLiteデータサイズ取得

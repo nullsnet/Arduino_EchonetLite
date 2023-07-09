@@ -35,22 +35,16 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
     uint32_t syntheticTransformationRatio = 1; ///< 係数デフォルト値
     uint32_t certifiedNumber              = 0;
 
-    /// @brief リクエストデータ生成
-    LowVoltageSmartElectricEnergyMeterClass()
-        : HousingFacilitiesDeviceClass() {
-        data.EDATA.DEOJ.classCode = static_cast<uint8_t>(ClassCode::LowVoltageSmartElectricMeter);
-    }
-
     /// @brief Get要求リクエストデータ生成
     template <class PropertyType>
-    explicit LowVoltageSmartElectricEnergyMeterClass(const std::vector<PropertyType> &property)
-        : HousingFacilitiesDeviceClass(property) {
+    void generateGetRequest(const std::vector<PropertyType> &property) {
+        HousingFacilitiesDeviceClass::generateGetRequest(property);
         data.EDATA.DEOJ.classCode = static_cast<uint8_t>(ClassCode::LowVoltageSmartElectricMeter);
     }
 
     /// @brief レスポンスのパース
-    explicit LowVoltageSmartElectricEnergyMeterClass(const std::string &response)
-        : HousingFacilitiesDeviceClass(response) {
+    bool load(const std::string &response) {
+        const bool result = HousingFacilitiesDeviceClass::load(response);
         for (const EchonetLite::EchonetLitePayload &payload : this->data.payload) {
             // 係数と単位はあらかじめパースしておく
             switch (static_cast<Property>(payload.echonetLiteProperty)) {
@@ -70,6 +64,7 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
                     break;
             }
         }
+        return result;
     }
 
     /// @brief 積算電力量単位変換
