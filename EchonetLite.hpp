@@ -164,6 +164,7 @@ class EchonetLite {
             EchonetLitePayload payload = {
                 .echonetLiteProperty = hexdata[counter++],
                 .propertyDataCounter = hexdata[counter++],
+                .payload = std::vector<uint8_t>(),
             };
             // char logBuffer[payload.propertyDataCounter * 2 + 1];
             // memset(logBuffer, '\0', sizeof(logBuffer));
@@ -243,12 +244,12 @@ class EchonetLite {
     }
 
     /// @brief 取得データのバリデーション
-    bool isValidValue(const int32_t value) {
+    bool isValidValue(const uint32_t value) {
         return value != 0x80000000 && value != 0x7FFFFFFF && value != 0x7FFFFFFE;
     }
 
     /// @brief 取得データのバリデーション
-    bool isValidValue(const int16_t value) {
+    bool isValidValue(const uint16_t value) {
         return value != 0x8000 && value != 0x7FFF && value != 0x7FFE;
     }
 
