@@ -1,3 +1,5 @@
+#pragma once
+
 #include "HousingFacilitiesDevice.hpp"
 
 class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceClass {

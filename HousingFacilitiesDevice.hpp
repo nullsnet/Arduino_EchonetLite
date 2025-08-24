@@ -1,3 +1,5 @@
+#pragma once
+
 #include "EchonetLite.hpp"
 
 class HousingFacilitiesDeviceClass : public EchonetLite {
