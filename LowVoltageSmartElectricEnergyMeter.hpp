@@ -3,6 +3,9 @@
 #include "HousingFacilitiesDevice.hpp"
 
 class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceClass {
+  private:
+    bool initializedParameter = false;
+
   public:
     /// @brief 低圧スマート電力量メータクラス
     /// @version APPENDIX ECHONET 機器オブジェクト詳細規定 Release R
@@ -56,8 +59,14 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
     }
 
     /// @brief 定数初期化
-    bool initConstantData() {
-        return initCumulativeEnergyUnit() && initSyntheticTransformationRatio();
+    bool initializeParameter() {
+        this->initializedParameter = (initCumulativeEnergyUnit() && initSyntheticTransformationRatio());
+        return this->initializedParameter;
+    }
+
+    /// @brief 定数初期化有無
+    bool isInitializedParameter() {
+        return this->initializedParameter;
     }
 
     /// @brief Get要求リクエストデータ生成
