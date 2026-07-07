@@ -197,12 +197,12 @@ class EchonetLite {
         }
     }
 
-    bool isTransactionIdExpected() {
+    bool isTransactionIdExpected() const {
         return this->data.EHEAD.TransactionId == this->nextTransactionId;
     }
 
     /// @brief EchonetLiteデータサイズ取得
-    size_t size() {
+    size_t size() const {
         size_t size = sizeof(data.EHEAD) + sizeof(data.EDATA);
         for (const EchonetLitePayload &payload : data.payload) {
             size += sizeof(payload.echonetLiteProperty);
@@ -213,9 +213,9 @@ class EchonetLite {
     }
 
     /// @brief EchonetLiteバイナリデータ取得
-    std::vector<uint8_t> getRawData() {
+    std::vector<uint8_t> getRawData() const {
         uint8_t arrayData[this->size()];
-        memcpy(arrayData, reinterpret_cast<uint8_t *>(&this->data), sizeof(data.EHEAD) + sizeof(data.EDATA));
+        memcpy(arrayData, reinterpret_cast<const uint8_t *>(&this->data), sizeof(data.EHEAD) + sizeof(data.EDATA));
 
         int ptr = sizeof(data.EHEAD) + sizeof(data.EDATA);
         for (const EchonetLitePayload &payload : this->data.payload) {
@@ -231,31 +231,31 @@ class EchonetLite {
 
     /// @brief レスポンスから特定プロパティのデータ検索
     template <class PropertyType>
-    std::vector<EchonetLitePayload>::iterator findSpecifiedPropertyData(const PropertyType property, const size_t size) {
-        return std::find_if(this->data.payload.begin(), this->data.payload.end(), [property, size](EchonetLite::EchonetLitePayload &payload) {
+    std::vector<EchonetLitePayload>::const_iterator findSpecifiedPropertyData(const PropertyType property, const size_t size) const {
+        return std::find_if(this->data.payload.cbegin(), this->data.payload.cend(), [property, size](const EchonetLite::EchonetLitePayload &payload) {
             return payload.echonetLiteProperty == static_cast<typename std::underlying_type<PropertyType>::type>(property) && payload.payload.size() == size;
         });
     }
 
     /// @brief 取得データのバリデーション
     template <class PropertyType>
-    bool isValidValue(const PropertyType value) {
+    bool isValidValue(const PropertyType value) const {
         return true;
     }
 
     /// @brief 取得データのバリデーション
-    bool isValidValue(const uint32_t value) {
+    bool isValidValue(const uint32_t value) const {
         return value != 0x80000000 && value != 0x7FFFFFFF && value != 0x7FFFFFFE;
     }
 
     /// @brief 取得データのバリデーション
-    bool isValidValue(const uint16_t value) {
+    bool isValidValue(const uint16_t value) const {
         return value != 0x8000 && value != 0x7FFF && value != 0x7FFE;
     }
 
     /// @brief レスポンスから特定プロパティのデータ取得
     template <class PropertyType, class PropertyDataType>
-    bool getSpecifiedPropertyData(PropertyType prop, PropertyDataType *const data) {
+    bool getSpecifiedPropertyData(PropertyType prop, PropertyDataType *const data) const {
         const auto result = findSpecifiedPropertyData(prop, sizeof(PropertyDataType));
         if (result != this->data.payload.end()) {
             PropertyDataType temp;
@@ -271,7 +271,7 @@ class EchonetLite {
     /// @brief レスポンスから特定プロパティのデータ取得
     /// @note データ数をテンプレートで可変長にしたいがとりあえずベタ実装
     template <class PropertyType, class PropertyDataType1, class PropertyDataType2>
-    bool getSpecifiedPropertyData(PropertyType prop, PropertyDataType1 *const data1, PropertyDataType2 *const data2) {
+    bool getSpecifiedPropertyData(PropertyType prop, PropertyDataType1 *const data1, PropertyDataType2 *const data2) const {
         const auto result = findSpecifiedPropertyData(prop, sizeof(PropertyDataType1) + sizeof(PropertyDataType2));
         if (result != this->data.payload.end()) {
             PropertyDataType1 data1Temp;

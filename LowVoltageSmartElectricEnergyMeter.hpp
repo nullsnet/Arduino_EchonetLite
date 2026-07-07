@@ -65,7 +65,7 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
     }
 
     /// @brief 定数初期化有無
-    bool isInitializedParameter() {
+    bool isInitializedParameter() const {
         return this->initializedParameter;
     }
 
@@ -131,12 +131,12 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
     }
 
     /// @brief 瞬時電力計測値取得
-    bool getInstantaneousPower(int32_t *const instantaneousPower) {
+    bool getInstantaneousPower(int32_t *const instantaneousPower) const {
         return getSpecifiedPropertyData(Property::InstantaneousPower, instantaneousPower);
     }
 
     /// @brief 瞬時電流計測値取得
-    bool getInstantaneousCurrent(float *const current_R, float *const current_T) {
+    bool getInstantaneousCurrent(float *const current_R, float *const current_T) const {
         int16_t current_R_Int = 0;
         int16_t current_T_Int = 0;
         const auto hasData    = getSpecifiedPropertyData(Property::InstantaneousCurrents, &current_R_Int, &current_T_Int);
@@ -148,7 +148,7 @@ class LowVoltageSmartElectricEnergyMeterClass : public HousingFacilitiesDeviceCl
     }
 
     /// @brief 積算電力量計測値（正方向）取得
-    bool getCumulativeEnergyPositive(float *const cumulativeEnergyPositive) {
+    bool getCumulativeEnergyPositive(float *const cumulativeEnergyPositive) const {
         int32_t cumulativeEnergyPositiveInt = 0;
         bool hasData                        = getSpecifiedPropertyData(Property::CumulativeEnergyPositive, &cumulativeEnergyPositiveInt);
         if (hasData) {
