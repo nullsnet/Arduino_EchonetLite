@@ -140,8 +140,8 @@ class EchonetLite {
     /// @brief レスポンスのパース
     bool load(const std::string &response) {
         format();
-        const size_t responseSize     = response.length() / 2;
-        uint8_t hexdata[responseSize] = {0};
+        const size_t responseSize = response.length() / 2;
+        std::vector<uint8_t> hexdata(responseSize, 0);
 
         for (size_t itr = 0; itr < responseSize; itr++) {
             hexdata[itr] = strtol(response.substr(itr * 2, 2).c_str(), NULL, 16);
@@ -166,15 +166,11 @@ class EchonetLite {
                 .propertyDataCounter = hexdata[counter++],
                 .payload = std::vector<uint8_t>(),
             };
-            // char logBuffer[payload.propertyDataCounter * 2 + 1];
-            // memset(logBuffer, '\0', sizeof(logBuffer));
             for (size_t j = 0; j < payload.propertyDataCounter; j++) {
                 payload.payload.insert(payload.payload.begin(), hexdata[counter + j]);
-                // snprintf(&logBuffer[j * 2], sizeof(logBuffer) - (j * 2), "%02X", hexdata[counter + j]);
             }
             counter += payload.payload.size();
             data.payload.push_back(payload);
-            // log_i("%02X : %s", payload.echonetLiteProperty, logBuffer);
         }
 
         return isTransactionIdExpected();
@@ -214,18 +210,17 @@ class EchonetLite {
 
     /// @brief EchonetLiteバイナリデータ取得
     std::vector<uint8_t> getRawData() const {
-        uint8_t arrayData[this->size()];
-        memcpy(arrayData, reinterpret_cast<const uint8_t *>(&this->data), sizeof(data.EHEAD) + sizeof(data.EDATA));
+        std::vector<uint8_t> rawData(this->size());
+        memcpy(rawData.data(), reinterpret_cast<const uint8_t *>(&this->data), sizeof(data.EHEAD) + sizeof(data.EDATA));
 
-        int ptr = sizeof(data.EHEAD) + sizeof(data.EDATA);
+        size_t ptr = sizeof(data.EHEAD) + sizeof(data.EDATA);
         for (const EchonetLitePayload &payload : this->data.payload) {
-            arrayData[ptr++] = payload.echonetLiteProperty;
-            arrayData[ptr++] = payload.propertyDataCounter;
-            memcpy(&arrayData[ptr], payload.payload.data(), payload.payload.size());
+            rawData[ptr++] = payload.echonetLiteProperty;
+            rawData[ptr++] = payload.propertyDataCounter;
+            memcpy(&rawData[ptr], payload.payload.data(), payload.payload.size());
             ptr += payload.payload.size();
         }
 
-        std::vector<uint8_t> rawData(arrayData, arrayData + this->size());
         return rawData;
     };
 
