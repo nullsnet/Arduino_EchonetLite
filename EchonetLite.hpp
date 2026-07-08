@@ -167,8 +167,9 @@ class EchonetLite {
                 .payload = std::vector<uint8_t>(),
             };
             for (size_t j = 0; j < payload.propertyDataCounter; j++) {
-                payload.payload.insert(payload.payload.begin(), hexdata[counter + j]);
+                payload.payload.push_back(hexdata[counter + j]);
             }
+            std::reverse(payload.payload.begin(), payload.payload.end());
             counter += payload.payload.size();
             data.payload.push_back(payload);
         }
