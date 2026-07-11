@@ -141,6 +141,9 @@ class EchonetLite {
     bool load(const std::string &response) {
         format();
         const size_t responseSize = response.length() / 2;
+        if (responseSize < 12) {
+            return false;
+        }
         std::vector<uint8_t> hexdata(responseSize, 0);
 
         for (size_t itr = 0; itr < responseSize; itr++) {
@@ -161,12 +164,14 @@ class EchonetLite {
 
         uint8_t counter = 12;
         for (uint8_t i = 0; i < data.EDATA.operationPropertyCounter; i++) {
+            if (counter + 2 > hexdata.size()) break;
             EchonetLitePayload payload = {
                 .echonetLiteProperty = hexdata[counter++],
                 .propertyDataCounter = hexdata[counter++],
                 .payload = std::vector<uint8_t>(),
             };
             for (size_t j = 0; j < payload.propertyDataCounter; j++) {
+                if (counter + j >= hexdata.size()) break;
                 payload.payload.push_back(hexdata[counter + j]);
             }
             std::reverse(payload.payload.begin(), payload.payload.end());
@@ -211,15 +216,27 @@ class EchonetLite {
 
     /// @brief EchonetLiteバイナリデータ取得
     std::vector<uint8_t> getRawData() const {
-        std::vector<uint8_t> rawData(this->size());
-        memcpy(rawData.data(), reinterpret_cast<const uint8_t *>(&this->data), sizeof(data.EHEAD) + sizeof(data.EDATA));
+        std::vector<uint8_t> rawData;
+        rawData.reserve(this->size());
 
-        size_t ptr = sizeof(data.EHEAD) + sizeof(data.EDATA);
+        rawData.push_back(static_cast<uint8_t>(data.EHEAD.head1));
+        rawData.push_back(static_cast<uint8_t>(data.EHEAD.head2));
+        rawData.push_back(data.EHEAD.TransactionId & 0xFF);
+        rawData.push_back((data.EHEAD.TransactionId >> 8) & 0xFF);
+
+        rawData.push_back(static_cast<uint8_t>(data.EDATA.SEOJ.classGroupCode));
+        rawData.push_back(data.EDATA.SEOJ.classCode);
+        rawData.push_back(data.EDATA.SEOJ.instanceCode);
+        rawData.push_back(static_cast<uint8_t>(data.EDATA.DEOJ.classGroupCode));
+        rawData.push_back(data.EDATA.DEOJ.classCode);
+        rawData.push_back(data.EDATA.DEOJ.instanceCode);
+        rawData.push_back(static_cast<uint8_t>(data.EDATA.echonetLiteService));
+        rawData.push_back(data.EDATA.operationPropertyCounter);
+
         for (const EchonetLitePayload &payload : this->data.payload) {
-            rawData[ptr++] = payload.echonetLiteProperty;
-            rawData[ptr++] = payload.propertyDataCounter;
-            memcpy(&rawData[ptr], payload.payload.data(), payload.payload.size());
-            ptr += payload.payload.size();
+            rawData.push_back(payload.echonetLiteProperty);
+            rawData.push_back(payload.propertyDataCounter);
+            rawData.insert(rawData.end(), payload.payload.begin(), payload.payload.end());
         }
 
         return rawData;
