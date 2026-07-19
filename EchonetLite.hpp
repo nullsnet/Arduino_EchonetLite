@@ -247,20 +247,6 @@ class EchonetLite {
         return rawData;
     };
 
-    /// @brief レスポンスから特定プロパティのデータ検索
-    template <class PropertyType>
-    std::vector<EchonetLitePayload>::const_iterator findSpecifiedPropertyData(const PropertyType property, const size_t size) const {
-        return std::find_if(this->data.payload.cbegin(), this->data.payload.cend(), [property, size](const EchonetLite::EchonetLitePayload &payload) {
-            return payload.echonetLiteProperty == static_cast<typename std::underlying_type<PropertyType>::type>(property) && payload.payload.size() == size;
-        });
-    }
-
-    /// @brief 取得データのバリデーション
-    template <class PropertyType>
-    bool isValidValue(const PropertyType value) const {
-        return true;
-    }
-
     /// @brief 取得データのバリデーション（未設定値を除外）
     template <class T>
     bool isValidValue(const T value) const {
@@ -292,11 +278,64 @@ class EchonetLite {
     template <class PropertyType, class... PropertyDataTypes>
     bool getSpecifiedPropertyData(PropertyType prop, PropertyDataTypes *const... data) const {
         const size_t totalSize = (sizeof(PropertyDataTypes) + ...);
-        const auto result      = findSpecifiedPropertyData(prop, totalSize);
+        const auto result      = std::find_if(this->data.payload.cbegin(), this->data.payload.cend(), [prop, totalSize](const EchonetLite::EchonetLitePayload &payload) {
+            return payload.echonetLiteProperty == static_cast<typename std::underlying_type<PropertyType>::type>(prop) && payload.payload.size() == totalSize;
+        });
+
         if (result == this->data.payload.end()) {
             return false;
         }
         size_t offset = 0;
         return copyPropertyDataImpl(result->payload, offset, data...);
+    }
+
+    /// @brief 可変長プロパティデータ取得（GetPropertyMap等用）
+    /// @note load()でreverseされたデータを元のワイヤオーダーに戻して返す
+    template <class PropertyType>
+    bool getVariableLengthPropertyData(PropertyType prop, std::vector<uint8_t> *out) const {
+        const auto it = std::find_if(this->data.payload.cbegin(), this->data.payload.cend(), [prop](const EchonetLitePayload &payload) {
+            return payload.echonetLiteProperty == static_cast<typename std::underlying_type<PropertyType>::type>(prop);
+        });
+        if (it == this->data.payload.end()) {
+            return false;
+        }
+        *out = it->payload;
+        std::reverse(out->begin(), out->end());
+        return !out->empty();
+    }
+
+    /// @brief 動作状態
+    bool getOperationStatus(uint8_t *const installationLocation) const {
+        return getSpecifiedPropertyData(Property::OperationStatus, installationLocation);
+    }
+
+    /// @brief 設置場所
+    bool getInstallationLocation(std::vector<uint8_t> *const installationLocation) const {
+        return getVariableLengthPropertyData(Property::InstallationLocation, installationLocation);
+    }
+
+    /// @brief 規格Version情報
+    bool getStandardVersionInformation(uint32_t *const standardVersionInformation) const {
+        return getSpecifiedPropertyData(Property::StandardVersionInformation, standardVersionInformation);
+    }
+
+    /// @brief 異常発生状態
+    bool getFaultStatus(uint8_t *const faultStatus) const {
+        return getSpecifiedPropertyData(Property::FaultStatus, faultStatus);
+    }
+
+    /// @brief 会員ID／メーカコード
+    bool getManufacturerCode(std::vector<uint8_t> *const manufacturerCode) const {
+        return getVariableLengthPropertyData(Property::ManufacturerCode, manufacturerCode);
+    }
+
+    /// @brief 状変アナウンスプロパティマップ
+    bool getStatusChangeAnnouncementPropertyMap(std::vector<uint8_t> *const propertyMap) const {
+        return getVariableLengthPropertyData(Property::StatusChangeAnnouncementPropertyMap, propertyMap);
+    }
+
+    /// @brief Getプロパティマップ取得
+    bool getPropertyMap(std::vector<uint8_t> *const propertyMap) const {
+        return getVariableLengthPropertyData(Property::GetPropertyMap, propertyMap);
     }
 };
