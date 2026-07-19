@@ -4,6 +4,7 @@
 
 // #include "esp32-hal-log.h"
 #include <algorithm>
+#include <limits>
 #include <string.h>
 #include <string>
 #include <vector>
@@ -12,32 +13,32 @@ class EchonetLite {
   public:
     /// @brief 機器オブジェクトスーパークラス
     enum class Property : uint8_t {
-        OperationStatus                     = 0x80,
-        InstallationLocation                = 0x81,
-        StandardVersionInformation          = 0x82,
-        IdentificationNumber                = 0x83,
-        InstantaneousPowerConsumption       = 0x84,
-        CumulativeElectricEnergyConsumption = 0x85,
-        ManufacturersFaultCode              = 0x86,
-        CurrentLimitSetting                 = 0x87,
-        FaultStatus                         = 0x88,
-        FaultDescription                    = 0x89,
-        ManufacturerCode                    = 0x8A,
-        BusinessFacilityCode                = 0x8B,
-        ProductCode                         = 0x8C,
-        ProductionNumber                    = 0x8D,
-        ProductionDate                      = 0x8E,
-        PowerSavingOperationSetting         = 0x8F,
-        RemoteControlSetting                = 0x93,
-        CurrentTimeSetting                  = 0x97,
-        CurrentDateSetting                  = 0x98,
-        PowerLimitSetting                   = 0x99,
-        CumulativeOperatingTime             = 0x9A,
-        SetMPropertyMap                     = 0x9B,
-        GetMPropertyMap                     = 0x9C,
-        StatusChangeAnnouncementPropertyMap = 0x9D,
-        SetPropertyMap                      = 0x9E,
-        GetPropertyMap                      = 0x9F,
+        OperationStatus                     = 0x80, ///< 動作状態
+        InstallationLocation                = 0x81, ///< 設置場所
+        StandardVersionInformation          = 0x82, ///< 規格Version情報
+        IdentificationNumber                = 0x83, ///< 識別番号
+        InstantaneousPowerConsumption       = 0x84, ///< 瞬時消費電力計測値
+        CumulativeElectricEnergyConsumption = 0x85, ///< 積算消費電力量計測値
+        ManufacturersFaultCode              = 0x86, ///< メーカ異常コード
+        CurrentLimitSetting                 = 0x87, ///< 電流制限設定
+        FaultStatus                         = 0x88, ///< 異常発生状態
+        FaultDescription                    = 0x89, ///< 異常内容
+        ManufacturerCode                    = 0x8A, ///< 会員ID／メーカコード
+        BusinessFacilityCode                = 0x8B, ///< 事業場コード
+        ProductCode                         = 0x8C, ///< 商品コード
+        ProductionNumber                    = 0x8D, ///< 製造番号
+        ProductionDate                      = 0x8E, ///< 製造年月日
+        PowerSavingOperationSetting         = 0x8F, ///< 節電動作設定
+        RemoteControlSetting                = 0x93, ///< 遠隔操作設定
+        CurrentTimeSetting                  = 0x97, ///< 現在時刻設定
+        CurrentDateSetting                  = 0x98, ///< 現在年月日設定
+        PowerLimitSetting                   = 0x99, ///< 電力制限設定
+        CumulativeOperatingTime             = 0x9A, ///< 積算運転時間
+        SetMPropertyMap                     = 0x9B, ///< SetMプロパティマップ
+        GetMPropertyMap                     = 0x9C, ///< GetMプロパティマップ
+        StatusChangeAnnouncementPropertyMap = 0x9D, ///< 状変アナウンスプロパティマップ
+        SetPropertyMap                      = 0x9E, ///< Setプロパティマップ
+        GetPropertyMap                      = 0x9F, ///< Getプロパティマップ
     };
 
     enum class ClassGroupCode : uint8_t {
@@ -164,14 +165,18 @@ class EchonetLite {
 
         uint8_t counter = 12;
         for (uint8_t i = 0; i < data.EDATA.operationPropertyCounter; i++) {
-            if (counter + 2 > hexdata.size()) break;
+            if (counter + 2 > hexdata.size()) {
+                break;
+            }
             EchonetLitePayload payload = {
                 .echonetLiteProperty = hexdata[counter++],
                 .propertyDataCounter = hexdata[counter++],
-                .payload = std::vector<uint8_t>(),
+                .payload             = std::vector<uint8_t>(),
             };
             for (size_t j = 0; j < payload.propertyDataCounter; j++) {
-                if (counter + j >= hexdata.size()) break;
+                if (counter + j >= hexdata.size()) {
+                    break;
+                }
                 payload.payload.push_back(hexdata[counter + j]);
             }
             std::reverse(payload.payload.begin(), payload.payload.end());
@@ -256,47 +261,42 @@ class EchonetLite {
         return true;
     }
 
-    /// @brief 取得データのバリデーション
-    bool isValidValue(const uint32_t value) const {
-        return value != 0x80000000 && value != 0x7FFFFFFF && value != 0x7FFFFFFE;
+    /// @brief 取得データのバリデーション（未設定値を除外）
+    template <class T>
+    bool isValidValue(const T value) const {
+        return value != std::numeric_limits<T>::min() && value != std::numeric_limits<T>::max() && value != std::numeric_limits<T>::max() - 1;
     }
 
-    /// @brief 取得データのバリデーション
-    bool isValidValue(const uint16_t value) const {
-        return value != 0x8000 && value != 0x7FFF && value != 0x7FFE;
+    /// @brief レスポンスからプロパティデータをコピー（再帰的テンプレート基底ケース）
+    bool copyPropertyDataImpl(const std::vector<uint8_t> &payload, size_t &offset) const {
+        return true;
     }
 
-    /// @brief レスポンスから特定プロパティのデータ取得
-    template <class PropertyType, class PropertyDataType>
-    bool getSpecifiedPropertyData(PropertyType prop, PropertyDataType *const data) const {
-        const auto result = findSpecifiedPropertyData(prop, sizeof(PropertyDataType));
-        if (result != this->data.payload.end()) {
-            PropertyDataType temp;
-            memcpy(&temp, (*result).payload.data(), sizeof(PropertyDataType));
-            if (isValidValue(temp)) {
-                *data = temp;
-                return true;
-            }
+    /// @brief レスポンスからプロパティデータをコピー（再帰的テンプレート）
+    template <class PropertyDataType, class... Rest>
+    bool copyPropertyDataImpl(const std::vector<uint8_t> &payload, size_t &offset, PropertyDataType *data, Rest *...rest) const {
+        if (offset + sizeof(PropertyDataType) > payload.size()) {
+            return false;
         }
-        return false;
+        PropertyDataType temp;
+        memcpy(&temp, payload.data() + offset, sizeof(PropertyDataType));
+        if (!isValidValue(temp)) {
+            return false;
+        }
+        *data = temp;
+        offset += sizeof(PropertyDataType);
+        return copyPropertyDataImpl(payload, offset, rest...);
     }
 
-    /// @brief レスポンスから特定プロパティのデータ取得
-    /// @note データ数をテンプレートで可変長にしたいがとりあえずベタ実装
-    template <class PropertyType, class PropertyDataType1, class PropertyDataType2>
-    bool getSpecifiedPropertyData(PropertyType prop, PropertyDataType1 *const data1, PropertyDataType2 *const data2) const {
-        const auto result = findSpecifiedPropertyData(prop, sizeof(PropertyDataType1) + sizeof(PropertyDataType2));
-        if (result != this->data.payload.end()) {
-            PropertyDataType1 data1Temp;
-            PropertyDataType2 data2Temp;
-            memcpy(&data1Temp, (*result).payload.data(), sizeof(PropertyDataType1));
-            memcpy(&data2Temp, (*result).payload.data() + sizeof(PropertyDataType2), sizeof(PropertyDataType2));
-            if (isValidValue(data1Temp) && isValidValue(data2Temp)) {
-                *data1 = data1Temp;
-                *data2 = data2Temp;
-                return true;
-            }
+    /// @brief レスポンスから特定プロパティのデータ取得（可変長テンプレート）
+    template <class PropertyType, class... PropertyDataTypes>
+    bool getSpecifiedPropertyData(PropertyType prop, PropertyDataTypes *const... data) const {
+        const size_t totalSize = (sizeof(PropertyDataTypes) + ...);
+        const auto result      = findSpecifiedPropertyData(prop, totalSize);
+        if (result == this->data.payload.end()) {
+            return false;
         }
-        return false;
+        size_t offset = 0;
+        return copyPropertyDataImpl(result->payload, offset, data...);
     }
 };
