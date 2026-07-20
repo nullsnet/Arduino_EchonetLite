@@ -291,10 +291,9 @@ class EchonetLite {
 
     /// @brief 可変長プロパティデータ取得（GetPropertyMap等用）
     /// @note load()でreverseされたデータを元のワイヤオーダーに戻して返す
-    template <class PropertyType>
-    bool getVariableLengthPropertyData(PropertyType prop, std::vector<uint8_t> *out) const {
+    bool getVariableLengthPropertyData(uint8_t prop, std::vector<uint8_t> *out) const {
         const auto it = std::find_if(this->data.payload.cbegin(), this->data.payload.cend(), [prop](const EchonetLitePayload &payload) {
-            return payload.echonetLiteProperty == static_cast<typename std::underlying_type<PropertyType>::type>(prop);
+            return payload.echonetLiteProperty == prop;
         });
         if (it == this->data.payload.end()) {
             return false;
@@ -302,6 +301,11 @@ class EchonetLite {
         *out = it->payload;
         std::reverse(out->begin(), out->end());
         return !out->empty();
+    }
+
+    template <class PropertyType, typename std::enable_if_t<std::is_enum_v<PropertyType>, int> = 0>
+    bool getVariableLengthPropertyData(PropertyType prop, std::vector<uint8_t> *out) const {
+        return getVariableLengthPropertyData(static_cast<uint8_t>(prop), out);
     }
 
     /// @brief 動作状態
