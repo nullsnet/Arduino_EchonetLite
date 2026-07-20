@@ -338,4 +338,30 @@ class EchonetLite {
     bool getPropertyMap(std::vector<uint8_t> *const propertyMap) const {
         return getVariableLengthPropertyData(Property::GetPropertyMap, propertyMap);
     }
+
+    /// @brief GetプロパティマップをデコードしてEPCコードのリストとして返す
+    /// @see 付録1 プロパティマップ記述形式
+    bool getPropertyMapDecoded(std::vector<uint8_t> *out) const {
+        std::vector<uint8_t> raw;
+        if (!getPropertyMap(&raw) || raw.empty()) {
+            return false;
+        }
+        const uint8_t count = raw[0];
+        if (count < 16) {
+            // 記述形式(1): EPCコードをそのまま列挙
+            out->assign(raw.begin() + 1, raw.end());
+        } else {
+            // 記述形式(2): 16バイトビットマップからデコード
+            out->clear();
+            out->reserve(count);
+            for (size_t n = 0; n < 16 && n + 1 < raw.size(); n++) {
+                for (int b = 0; b < 8; b++) {
+                    if (raw[n + 1] & (1 << b)) {
+                        out->push_back(0x80 + n + b * 0x10);
+                    }
+                }
+            }
+        }
+        return !out->empty();
+    }
 };
