@@ -1,0 +1,23 @@
+{
+  "name": "Arduino_EchonetLite",
+  "version": "1.0.0",
+  "description": "EchonetLite for Arduino",
+  "keywords": "EchonetLite, smart meter, home automation",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nullsnet/Arduino_EchonetLite"
+  },
+  "authors": [
+    {
+      "name": "nullsnet",
+      "maintainer": true
+    }
+  ],
+  "license": "MIT",
+  "frameworks": "arduino",
+  "platforms": "*",
+  "build": {
+    "srcDir": ".",
+    "includeDir": "."
+  }
+}
